@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Schwab-Anmeldung</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 16px; line-height: 1.6; color: #222; background: #fff; }
+</style>
+</head>
+<body>
+<p id="t">Weiterleitung…</p>
+<script>
+// Rueckweg der Schwab-Anmeldung fuer das eigene Dashboard. Nichts wird
+// gespeichert ausser der Ruecksprungadresse fuer hoechstens 15 Minuten; der
+// Code geht nur im Browser weiter, im Fragment (nie an einen Server).
+(function () {
+  var t = document.getElementById('t');
+  var SCHLUESSEL = 'architect_schwab_rueck';
+  var h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('ziel')) {
+    // Hinweg: #ziel=<Schwab-Anmeldeadresse>&zurueck=<Dashboard>&kette=<weitere Apps>
+    var ziel = h.get('ziel'), zurueck = h.get('zurueck') || '';
+    if (ziel.indexOf('https://api.schwabapi.com/') !== 0 || !/^https?:\/\/[^\/?#]+$/.test(zurueck)) {
+      t.textContent = 'Ungültiger Aufruf.'; return;
+    }
+    try {
+      localStorage.setItem(SCHLUESSEL, JSON.stringify({ zurueck: zurueck, kette: h.get('kette') || '', zeit: Date.now() }));
+    } catch (e) { t.textContent = 'Der Browser lässt keinen Speicher zu.'; return; }
+    location.replace(ziel);
+    return;
+  }
+  // Rueckweg: Schwab haengt ?code=...&session=...&state=... an.
+  var s = null;
+  try { s = JSON.parse(localStorage.getItem(SCHLUESSEL) || 'null'); localStorage.removeItem(SCHLUESSEL); } catch (e) { }
+  if (location.search.indexOf('code=') < 0 || !s || Date.now() - s.zeit > 15 * 60 * 1000) {
+    t.textContent = 'Kein Anmeldevorgang offen – bitte im Dashboard neu starten.'; return;
+  }
+  location.replace(s.zurueck + '/schwab_rueck.html#' + location.search.slice(1)
+    + '&kette=' + encodeURIComponent(s.kette));
+})();
+</script>
+</body>
+</html>
